@@ -30,11 +30,11 @@ async def main():
 
     # Initialize Scheduler
     scheduler = AsyncIOScheduler()
-    # Add job to run every 10 minutes
+    # Add job to run every 10 minutes, and also immediately on startup
     scheduler.add_job(process_lastminute_check, "interval", minutes=10, args=[bot])
 
-    # Run immediately on startup? Maybe.
-    # scheduler.add_job(process_lastminute_check, args=[bot])
+    # Run once immediately
+    asyncio.create_task(process_lastminute_check(bot))
 
     scheduler.start()
     logger.info("Scheduler started.")

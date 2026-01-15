@@ -11,11 +11,9 @@ from src.utils import is_match
         (
             "Geraetewart",
             "Gerätewart TSF",
-            False,
-        ),  # Distance > 1 (ä -> ae is 2 chars difference? No, ä is 1 char, ae is 2. Replace is 1 edit. Insert 'e' is another.)
-        # Levenshtein "Gerätewart" vs "Geraetewart"
-        # G-e-r-ä-t vs G-e-r-a-e-t
-        # ä -> a (sub) + insert e. Distance 2.
+            True,
+        ),  # Distance 0 with ae->ä normalization
+        ("Geräte wart", "Gerätewart TSF", True),  # Ignore spaces
         ("Gerätewrt", "Gerätewart TSF", True),  # Distance 1 (missing 'a')
         (
             "Gerätewar",
@@ -25,6 +23,7 @@ from src.utils import is_match
         # Full title checks
         ("Gerätewart TSF", "Gerätewart TSF", True),  # Exact full
         ("Gerätewrt TSF", "Gerätewart TSF", True),  # Edit distance 1 full string
+        ("Geraetewart TSF", "Gerätewart TSF", True),  # Umlaute and full string
         # Non-matches
         ("Atemschutz", "Gerätewart TSF", False),
     ],

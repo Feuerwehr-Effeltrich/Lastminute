@@ -1,8 +1,12 @@
 from sqlalchemy import BigInteger, Boolean, Column, DateTime, Integer, String, JSON
 from sqlalchemy.orm import declarative_base
-from datetime import datetime
+from datetime import datetime, timezone
 
 Base = declarative_base()
+
+
+def utc_now_naive():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class User(Base):
@@ -11,7 +15,7 @@ class User(Base):
     user_id = Column(BigInteger, primary_key=True)
     filters = Column(JSON, default=list)
     is_admin = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
 
 
 class Event(Base):
@@ -23,7 +27,7 @@ class Event(Base):
     end_ts = Column(DateTime)
     location = Column(String(50))
     seats = Column(Integer)
-    last_seen = Column(DateTime, default=datetime.utcnow)
+    last_seen = Column(DateTime, default=utc_now_naive)
 
 
 class Course(Base):

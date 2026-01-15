@@ -7,7 +7,7 @@ from typing import List
 from src.database import AsyncSessionLocal
 from src.models import User, Course
 from src.states import FilterStates
-from src.utils import normalize_text
+from src.utils import deep_normalize
 
 router = Router()
 
@@ -64,7 +64,7 @@ async def process_add_filter(message: types.Message, state: FSMContext):
         await message.answer("❌ Eingabe abgebrochen. Zurück zur Übersicht: /start")
         return
 
-    new_keywords = [normalize_text(k) for k in text.split(";") if k.strip()]
+    new_keywords = [k.strip() for k in text.split(";") if k.strip()]
 
     if not new_keywords:
         await message.answer(
@@ -73,10 +73,17 @@ async def process_add_filter(message: types.Message, state: FSMContext):
         return
 
     current_filters = await get_user_filters(message.from_user.id)
-    # Combine and deduplicate
-    updated_filters = list(set(current_filters + new_keywords))
+    # Combine and deduplicate based on normalized version to avoid redundant looking filters
+    # but we want to keep the one the user just typed if it's "better" or just unique.
+    # Actually, simpler: just add them and deduplicate by deep_normalize.
 
-    await update_user_filters(message.from_user.id, updated_filters)
+    existing_norm = {deep_normalize(f) for f in current_filters}
+    for k in new_keywords:
+        if deep_normalize(k) not in existing_norm:
+            current_filters.append(k)
+            existing_norm.add(deep_normalize(k))
+
+    await update_user_filters(message.from_user.id, current_filters)
 
     await state.clear()
     await message.answer(
@@ -114,11 +121,13 @@ async def process_remove_filter(message: types.Message, state: FSMContext):
         await message.answer("❌ Eingabe abgebrochen. Zurück zur Übersicht: /start")
         return
 
-    to_remove = [normalize_text(k) for k in text.split(";") if k.strip()]
+    to_remove_norm = {deep_normalize(k) for k in text.split(";") if k.strip()}
     current_filters = await get_user_filters(message.from_user.id)
 
-    # Remove best effort
-    updated_filters = [f for f in current_filters if f not in to_remove]
+    # Remove best effort (normalized comparison)
+    updated_filters = [
+        f for f in current_filters if deep_normalize(f) not in to_remove_norm
+    ]
 
     await update_user_filters(message.from_user.id, updated_filters)
 
@@ -143,7 +152,8 @@ async def process_purge_confirmation(message: types.Message, state: FSMContext):
     if text == "j":
         await update_user_filters(message.from_user.id, [])
         await message.answer(
-            "✅ Deine Filter wurden entfernt. Zurück zur Übersicht: /start"
+            "✅ <b>Deine Filter wurden entfernt.</b>\n\nZurück zur Übersicht: /start",
+            parse_mode="HTML",
         )
     else:
         await message.answer("❌ Eingabe abgebrochen. Zurück zur Übersicht: /start")

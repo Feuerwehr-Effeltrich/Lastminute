@@ -42,7 +42,7 @@ async def cmd_start(message: types.Message):
         else:
             filter_count = len(user.filters) if user.filters else 0
             await message.answer(
-                f"👋 Du bist bereits angemeldet.\n"
+                f"👋 Du bist angemeldet.\n"
                 f"Du hast {filter_count} Filter aktiviert.\n\n"
                 "🔹 /filters zeigt deine aktuellen Filter an\n"
                 "🔹 /addfilter um Filter hinzuzufügen\n"

@@ -1,26 +1,34 @@
 import Levenshtein
+import re
 
 
-def normalize_text(text: str) -> str:
-    """Lowercase and strip text."""
+def deep_normalize(text: str) -> str:
+    """Lowercase, replace umlaute (ä->ae etc), and remove all whitespace."""
     if not text:
         return ""
-    return text.lower().strip()
+    text = text.lower()
+    text = (
+        text.replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss")
+    )
+    # Remove all whitespace
+    text = re.sub(r"\s+", "", text)
+    return text
 
 
 def is_match(filter_keyword: str, text: str) -> bool:
     """
     Check if the filter matches the text using Levenshtein distance <= 1.
-    Both inputs are normalized before comparison.
+    Uses deep normalization (ignore case, spaces, and umlaute mapping).
     """
-    norm_filter = normalize_text(filter_keyword)
-    norm_text = normalize_text(text)
+    norm_filter = deep_normalize(filter_keyword)
+    norm_text = deep_normalize(text)
 
-    # If filter is empty, ignore (logic handled elsewhere usually, but safe guard)
+    # If filter is empty, ignore
     if not norm_filter:
         return False
 
-    # Exact match check first (fast path)
+    # 1. Exact match check (now includes substring since spaces are gone)
+    # e.g. "geraetewart" in "geraetewarttsf"
     if norm_filter in norm_text:
         return True
 
@@ -29,10 +37,11 @@ def is_match(filter_keyword: str, text: str) -> bool:
         return True
 
     # 3. Token-based fuzzy match
-    # Allows "Gerätewrt" to match "Gerätewart" in "Gerätewart TSF"
-    tokens = norm_text.split()
-    for token in tokens:
-        if Levenshtein.distance(norm_filter, token) <= 1:
+    # Since norm_text has no spaces, we need the original tokens but normalized
+    original_tokens = text.split()
+    for token in original_tokens:
+        norm_token = deep_normalize(token)
+        if Levenshtein.distance(norm_filter, norm_token) <= 1:
             return True
 
     return False
