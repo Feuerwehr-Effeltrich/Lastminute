@@ -139,8 +139,11 @@ async def process_remove_filter(message: types.Message, state: FSMContext):
 async def cmd_purge_filters(message: types.Message, state: FSMContext):
     await state.set_state(FilterStates.waiting_for_purge_confirmation)
     await message.answer(
-        "Du bist dabei, alle deine Filter zu löschen, ab dann bekommst du wieder Nachrichten für <b>alle</b> freien Plätze.\n\n"
-        "Willst du das wirklich tun? Wenn ja, schreibe <b>j</b>, ansonsten <b>x</b> zum Abbrechen.",
+        "⚠️ <b>Filter zurücksetzen</b>\n\n"
+        "Du bist dabei, alle deine Filter zu löschen. Ab dann bekommst du wieder Nachrichten für <b>alle</b> freien Plätze.\n\n"
+        "Willst du das wirklich tun?\n"
+        "🔹 Schreibe <b>j</b> zum Bestätigen\n"
+        "🔹 Schreibe <b>x</b> zum Abbrechen",
         parse_mode="HTML",
     )
 

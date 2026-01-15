@@ -81,7 +81,9 @@ async def process_lastminute_check(bot: Bot):
                     f"<b>{event.title}</b>\n"
                     f"📍 {event.location}\n"
                     f"📅 {event.begin_ts.strftime('%d.%m.%Y %H:%M')} - {event.end_ts.strftime('%d.%m.%Y %H:%M')}\n"
-                    f"💺 Freie Plätze: {event.seats}"
+                    f"💺 Freie Plätze: {event.seats}\n\n"
+                    f"🌐 <a href='https://www.bms-fw.bayern.de/Navigation/Public/lastminute.aspx'>Restplatzbörse öffnen</a>\n"
+                    f"🏠 Übersicht: /start"
                 )
 
                 for user in users:
