@@ -1,5 +1,5 @@
 from aiogram import Router, types
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
@@ -42,7 +42,8 @@ async def send_welcome_overview(message: types.Message, user: User = None):
 
 
 @router.message(Command("start"))
-async def cmd_start(message: types.Message):
+async def cmd_start(message: types.Message, state: FSMContext):
+    await state.clear()
     user_id = message.from_user.id
 
     async with AsyncSessionLocal() as session:
@@ -95,7 +96,7 @@ async def process_stop_confirmation(message: types.Message, state: FSMContext):
     await state.clear()
 
 
-@router.message()
+@router.message(StateFilter(None))
 async def cmd_unknown(message: types.Message):
     user_id = message.from_user.id
     async with AsyncSessionLocal() as session:
