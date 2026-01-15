@@ -1,0 +1,27 @@
+services:
+  bot:
+    build: ./lastminute
+    container_name: lastminute_bot
+    env_file: .env
+    depends_on:
+      - db
+    networks:
+      - bot_net
+    restart: unless-stopped
+
+  db:
+    image: mariadb:latest
+    container_name: lastminute_db
+    env_file: .env
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - bot_net
+    restart: always
+
+networks:
+  bot_net:
+    driver: bridge
+
+volumes:
+  db_data:

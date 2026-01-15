@@ -1,185 +1,100 @@
 # Architecture
 
-Deployment via Docker-Compose.
+## Overview
+A Telegram bot that monitors the "Restplatzbörse" (last minute exchange) of the Bavarian Fire Department schools. It fetches data every 10 minutes, stores it in a MariaDB database, and notifies subscribers about new training opportunities based on their filters.
 
-Telegram bot.
+## Deployment
+- **Stack**: Python 3.11, Docker, Docker Compose, MariaDB.
+- **Containerization**: 
+  - `bot`: Python application running the Telegram bot and the scraping scheduler.
+  - `db`: MariaDB instance.
+- **Networking**: Containers communicate via a dedicated Docker network (`bot_net`).
 
-Mariadb database for keeping records
+## Core Components
 
-fetches https://www.bms-fw.bayern.de/Navigation/Public/lastminute.aspx every 10 minutes, notifying users for new seats on trainings they subscribed to
+### 1. Telegram Bot
+- **Library**: `aiogram` (Asyncio).
+- **Features**: User management, filter configuration, notifications.
+- **Language**: German.
 
-stores all known identifiers of training programs in db table, so users can quickly see how things are named
+### 2. Data Persistence
+- **Database**: MariaDB.
+- **ORM**: SQLAlchemy (Async).
 
-For searching, both the fetched titles and the user's filters are converted to lowercase and stripped of whitespaces.
-It is considered a match when the hamming distance is 1 or lower.
+### 3. Fetching & Scheduling
+- **Library**: `APScheduler` (AsyncIOScheduler).
+- **Interval**: Every 10 minutes.
+- **Source**: `https://www.bms-fw.bayern.de/Navigation/Public/lastminute.aspx`
+- **Parsing**: `BeautifulSoup4` (HTML parsing of ASP.NET `table.list`).
+- **Logic**:
+  - Fetches page content.
+  - Parses events (ID, Title, Dates, Seats, Location).
+  - Compares with the database `events` table.
+  - **Notification Trigger**: Only triggered when a **new ID** is discovered.
+    - If a program ID matches an existing one in the DB, no notification is sent (even if seats change).
+    - If a program ID is new (or reappears after being deleted), notifications are triggered.
+  - **Error Handling**:
+    - *Network Error*: Log to stdout, silent retry.
+    - *Structure Change* (Parsing failure): Log error, DM all users marked as `is_admin`.
+
+### 4. Filtering Logic
+- **Normalization**: Input and Titles are converted to lowercase and stripped of whitespace.
+- **Matching Algorithm**: **Levenshtein Distance ≤ 1** (Fuzzy matching allowing 1 typo/edit).
+- **Behavior**:
+  - Empty filter list: User receives ALL notifications.
+  - Populated filter list: User receives notification if *any* filter keyword matches the event title.
 
 ## Commands
 
-After every command (except stop), the overview of commands is shown, allowing for fluent usage.
-
-Should the user never have typed /start (i.e. there is no entry for them in the db), always send the welcome message:
-
-> Hi, ich bin der LastminuteBayernBot! Wenn du Benachrichtigungen für freie Plätze auf der Feuerwehr-Restplatzbörse erhalten möchtest: /start
-
 ### /start
-
-Marks the user as interested in notifications, saving a respective entry for the user in the db.
-By default, a notification for every new seat is sent.
-
-new user:
-
-> Du bist jetzt eingetragen und erhältst Nachrichten zu jedem neuen freien Platz.  
-> Die Abfrage nach neuen Plätzen findet alle 10 Minuten statt.  
-> Sollte nur ein Teil für dich relevant sein, kannst du Filter hinzufügen:
-> - /filters zeigt deine aktuellen Filter an
-> - /add-filter um einen oder mehrere Filter hinzuzufügen, zeigt auch alle derzeit bekannten Lehrgangsbezeichnungen
-> - /remove-filter um diese wieder zu entfernen
-> - /purge-filters um alle Filter zurückzusetzen und wieder alle freien Plätze zu bekommen
->
-> Solltest du dich ganz austragen wollen, kannst du das mit /stop tun.
-
-existing user:
-
-> Du erhältst derzeit Nachrichten zu neuen freien Lehrgangsplätzen. Du hast {x} Filter aktiviert.
-> - /filters zeigt deine aktuellen Filter an
-> - /add-filter um einen oder mehrere Filter hinzuzufügen, zeigt auch alle derzeit bekannten Lehrgangsbezeichnungen
-> - /remove-filter um diese wieder zu entfernen
-> - /purge-filters um alle Filter zurückzusetzen und wieder alle freien Plätze zu bekommen
->
-> Solltest du dich ganz austragen wollen, kannst du das mit /stop tun.
-
-### /filters
-
-Shows the filters the current user has applied.
-
-with no filters:
-
-> Du hast derzeit keine eigenen Filter festgelegt, du bekommst sofort alle freien Plätze mit.
-
-with filters:
-
-> Deine aktuellen Filter:
-> - {keyword1}
-> - {keyword2}
-> - ...
-
-with this added at the bottom for both cases:
-
-> Zurück zur Übersicht: /start
-
-### /add-filter
-
-User can type in a filter keyword, or multiple separated with semicolons.
-When filter was previously empty (i.e. everything is shown), then now only seats for trainings that include the filter keyword are shown
-When other filters are already applied, add the new keyword to the list, also showing notifications for those.
-
-logic (kotlin-style): `filters.size == 0 || filters.any{ it == title }`
-
-> Aktuell bekannte Lehrgangsbezeichnungen:
-> - {title1}
-> - {title2}
-> - ...
->
-> Gebe einen oder mehrere Suchtitel ein, nach denen gefiltert werden soll. Für mehrere Titel, trenne diese mit einem Strichpunkt ;
->
-> Groß- und Kleinschreibung ist egal, ebenso werden Leerzeichen bei Filtern ignoriert.
-> Um die Eingabe abzubrechen, schreibe x
-
-User can now type in their filter(s). Reply:
-
-> Dein Filter wurde eingetragen. Zurück zur Übersicht: /start
-
-Or if they typed x:
-
-> Eingabe abgebrochen. Zurück zur Übersicht: /start
-
-### /remove-filter
-
-Removes a keyword from the filter.
-
-with no filters:
-
-> Du hast derzeit keine eigenen Filter festgelegt. Zurück zur Übersicht: /start
-
-with filters:
-
-> Deine aktuellen Filter:
-> - {keyword1}
-> - {keyword2}
-> - ...
->
-> Gebe einen oder mehrere Filter ein, die wieder entfernt werden sollen. Für mehrere Filter, trenne diese mit einem Strichpunkt ;
->
-> Groß- und Kleinschreibung ist egal, ebenso werden Leerzeichen bei Filtern ignoriert.
-> Um die Eingabe abzubrechen, schreibe x
-
-User can now type in their filter(s). Reply:
-
-> Die Filter wurden entfernt. Zurück zur Übersicht: /start
-
-If the user types in filters they didn't have previously, delete them on a best-effort basis, disregarding missing ones.
-
-Or if they typed x:
-
-> Eingabe abgebrochen. Zurück zur Übersicht: /start
-
-### /purge-filters
-
-Resets the filters, showing every new seat again.
-
-> Du bist dabei, alle deine Filter zu löschen, ab dann bekommst du wieder Nachrichten für alle freien Plätze.
->
-> Willst du das wirklich tun? Wenn ja, schreibe j, ansonsten x zum abbrechen.
-
-After confirmation:
-
-> Deine Filter wurden entfernt. Zurück zur Übersicht: /start
-
-Or if they typed x:
-
-> Eingabe abgebrochen. Zurück zur Übersicht: /start
+- Registers the user in the database.
+- Welcome message explanation.
 
 ### /stop
+- Removes the user from the database.
+- Stops all notifications.
 
-Marks the user as unsubscribed, deleting their entry from the database.
-Sends a message confirming the canceling. Shows /start should the user re-subscribe
+### /filters
+- Lists currently active filters.
 
-> Möchtest du dich ganz abmelden? Bis zu einer Neuanmeldung wirst du keine Nachrichten mehr erhalten.
->
-> Wenn ja, schreibe j, ansonsten x zum abbrechen.
+### /add-filter
+- Dialogue to add new keywords.
+- Does **not** list all known courses (to avoid spam).
+- Supports multiple inputs separated by `;`.
 
-After confirmation:
+### /remove-filter
+- Dialogue to remove existing filters.
 
-> Du wurdest abgemeldet. Solltest du dich umentscheiden und wieder Nachrichten bekommen wollen: /start
+### /purge-filters
+- Removes all filters (user reverts to receiving ALL notifications).
+- Requires confirmation.
 
-Or if they typed x:
+### /list-courses
+- Lists all known course titles stored in the database.
+- Useful for users to see valid filter terms.
 
-> Eingabe abgebrochen. Zurück zur Übersicht: /start
+## Database Schema
 
-## Database Tables
+### `users` Table
+| Column | Type | Description |
+|--------|------|-------------|
+| `user_id` | BigInteger (PK) | Telegram User ID |
+| `filters` | JSON | List of filter strings (e.g. `["gerätewart", "atemschutz"]`) |
+| `is_admin` | Boolean | Flag for receiving system alerts (default: False) |
+| `created_at` | DateTime | Timestamp of subscription |
 
-### User
+### `courses` Table
+| Column | Type | Description |
+|--------|------|-------------|
+| `title` | String (PK) | Unique, normalized course titles for suggestions |
 
-Once subscribed, the user is stored in here.
-
-- user name/handle/number (key)
-- filter-keywords array
-
-### Courses
-
-Stores all known titles of training programs, for giving the user suggestions on what filters they can apply.
-
-- title (key)
-
-### Events
-
-Keep the previous fetched state (so a restart doesn't notify everyone because in-memory state is lost).
-On fetch, compare pulled status with ones from this table, sending notifications for new free seats.
-Delete old entries, then store the current state for the next fetch.
-
-- ID (key)
-- title
-- begin timestamp
-- end timestamp
-- location
-- seats
+### `events` Table
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | Integer (PK) | The `data-id` from the source HTML (e.g. `8281`) |
+| `title` | String | Course title |
+| `begin_ts` | DateTime | Start timestamp |
+| `end_ts` | DateTime | End timestamp |
+| `location` | String | Location code (e.g. `SFS-R`) |
+| `seats` | Integer | Number of free seats |
+| `last_seen` | DateTime | Timestamp of last successful fetch |
