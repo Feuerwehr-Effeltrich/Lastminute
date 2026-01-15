@@ -58,8 +58,10 @@ async def cmd_start(message: types.Message):
 async def cmd_stop(message: types.Message, state: FSMContext):
     await state.set_state(FilterStates.waiting_for_stop_confirmation)
     await message.answer(
+        "⚠️ <b>Abmeldung</b>\n\n"
         "Möchtest du dich ganz abmelden? Bis zu einer Neuanmeldung wirst du keine Nachrichten mehr erhalten.\n\n"
-        "Wenn ja, schreibe <b>j</b>, ansonsten <b>x</b> zum Abbrechen.",
+        "🔹 Schreibe <b>j</b> zum Bestätigen\n"
+        "🔹 Schreibe <b>x</b> zum Abbrechen",
         parse_mode="HTML",
     )
 
@@ -75,7 +77,8 @@ async def process_stop_confirmation(message: types.Message, state: FSMContext):
             await session.commit()
 
         await message.answer(
-            "✅ Du wurdest abgemeldet. Solltest du dich umentscheiden und wieder Nachrichten bekommen wollen: /start",
+            "✅ <b>Du wurdest abgemeldet.</b>\n\n"
+            "Solltest du dich umentscheiden und wieder Nachrichten bekommen wollen: /start",
             parse_mode="HTML",
         )
     else:
