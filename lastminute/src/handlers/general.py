@@ -11,6 +11,19 @@ from src.states import FilterStates
 router = Router()
 
 
+from aiogram import Router, types, F
+from aiogram.filters import Command, StateFilter
+from aiogram.fsm.context import FSMContext
+from sqlalchemy import select, delete
+from sqlalchemy.exc import IntegrityError
+
+from src.database import AsyncSessionLocal
+from src.models import User
+from src.states import FilterStates
+
+router = Router()
+
+
 async def send_welcome_overview(message: types.Message, user: User = None):
     if not user:
         await message.answer(
@@ -27,7 +40,9 @@ async def send_welcome_overview(message: types.Message, user: User = None):
             parse_mode="HTML",
         )
     else:
-        filter_count = len(user.filters) if user.filters else 0
+        # Check if user.filters is a list (SQLAlchemy JSON might return it as such)
+        filters = user.filters if user.filters else []
+        filter_count = len(filters)
         await message.answer(
             f"👋 Du bist angemeldet.\n"
             f"Du hast {filter_count} Filter aktiviert.\n\n"
@@ -47,15 +62,14 @@ async def cmd_start(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
 
     async with AsyncSessionLocal() as session:
-        # Check if user exists
         result = await session.execute(select(User).where(User.user_id == user_id))
         user = result.scalars().first()
 
         if not user:
-            # Create new user
             new_user = User(user_id=user_id, filters=[])
             session.add(new_user)
             await session.commit()
+            # Re-fetch or just pass None to show the welcome for new users
             await send_welcome_overview(message, None)
         else:
             await send_welcome_overview(message, user)
@@ -75,7 +89,7 @@ async def cmd_stop(message: types.Message, state: FSMContext):
 
 @router.message(FilterStates.waiting_for_stop_confirmation)
 async def process_stop_confirmation(message: types.Message, state: FSMContext):
-    text = message.text.lower().strip()
+    text = message.text.lower().strip() if message.text else ""
 
     if text == "j":
         user_id = message.from_user.id
@@ -88,12 +102,18 @@ async def process_stop_confirmation(message: types.Message, state: FSMContext):
             "Solltest du dich umentscheiden und wieder Nachrichten bekommen wollen: /start",
             parse_mode="HTML",
         )
-    else:
+        await state.clear()
+    elif text == "x":
         await message.answer(
             "❌ Eingabe abgebrochen. Zurück zur Übersicht: /start", parse_mode="HTML"
         )
-
-    await state.clear()
+        await state.clear()
+    else:
+        # Invalid input for this state, don't clear state, just prompt again
+        await message.answer(
+            "⚠️ Bitte antworte mit <b>j</b> zum Abmelden oder <b>x</b> zum Abbrechen.",
+            parse_mode="HTML",
+        )
 
 
 @router.message(StateFilter(None))

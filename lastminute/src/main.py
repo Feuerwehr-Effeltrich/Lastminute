@@ -25,8 +25,8 @@ async def main():
     dp = Dispatcher()
 
     # Register routers
-    dp.include_router(general.router)
     dp.include_router(filters.router)
+    dp.include_router(general.router)
 
     # Initialize Scheduler
     scheduler = AsyncIOScheduler()
