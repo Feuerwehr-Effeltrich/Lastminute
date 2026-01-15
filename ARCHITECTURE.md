@@ -57,19 +57,19 @@ A Telegram bot that monitors the "Restplatzbörse" (last minute exchange) of the
 ### /filters
 - Lists currently active filters.
 
-### /add-filter
+### /addfilter
 - Dialogue to add new keywords.
 - Does **not** list all known courses (to avoid spam).
 - Supports multiple inputs separated by `;`.
 
-### /remove-filter
+### /removefilter
 - Dialogue to remove existing filters.
 
-### /purge-filters
+### /purgefilters
 - Removes all filters (user reverts to receiving ALL notifications).
 - Requires confirmation.
 
-### /list-courses
+### /listcourses
 - Lists all known course titles stored in the database.
 - Useful for users to see valid filter terms.
 

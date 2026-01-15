@@ -43,7 +43,7 @@ async def cmd_filters(message: types.Message):
         )
 
 
-@router.message(Command("add-filter"))
+@router.message(Command("addfilter"))
 async def cmd_add_filter(message: types.Message, state: FSMContext):
     await state.set_state(FilterStates.waiting_for_add_filter)
     await message.answer(
@@ -84,7 +84,7 @@ async def process_add_filter(message: types.Message, state: FSMContext):
     )
 
 
-@router.message(Command("remove-filter"))
+@router.message(Command("removefilter"))
 async def cmd_remove_filter(message: types.Message, state: FSMContext):
     filters = await get_user_filters(message.from_user.id)
 
@@ -126,7 +126,7 @@ async def process_remove_filter(message: types.Message, state: FSMContext):
     await message.answer("✅ Die Filter wurden entfernt. Zurück zur Übersicht: /start")
 
 
-@router.message(Command("purge-filters"))
+@router.message(Command("purgefilters"))
 async def cmd_purge_filters(message: types.Message, state: FSMContext):
     await state.set_state(FilterStates.waiting_for_purge_confirmation)
     await message.answer(
@@ -151,7 +151,7 @@ async def process_purge_confirmation(message: types.Message, state: FSMContext):
     await state.clear()
 
 
-@router.message(Command("list-courses"))
+@router.message(Command("listcourses"))
 async def cmd_list_courses(message: types.Message):
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(Course.title).order_by(Course.title))

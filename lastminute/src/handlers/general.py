@@ -32,10 +32,10 @@ async def cmd_start(message: types.Message):
                 "Die Abfrage nach neuen Plätzen findet alle 10 Minuten statt.\n\n"
                 "Sollte nur ein Teil für dich relevant sein, kannst du Filter hinzufügen:\n"
                 "🔹 /filters zeigt deine aktuellen Filter an\n"
-                "🔹 /add-filter um Filter hinzuzufügen\n"
-                "🔹 /remove-filter um Filter zu entfernen\n"
-                "🔹 /purge-filters um alle Filter zu löschen\n"
-                "🔹 /list-courses zeigt alle bekannten Lehrgangsnamen\n"
+                "🔹 /addfilter um Filter hinzuzufügen\n"
+                "🔹 /removefilter um Filter zu entfernen\n"
+                "🔹 /purgefilters um alle Filter zu löschen\n"
+                "🔹 /listcourses zeigt alle bekannten Lehrgangsnamen\n"
                 "🔹 /stop um dich abzumelden",
                 parse_mode="HTML",
             )
@@ -45,10 +45,10 @@ async def cmd_start(message: types.Message):
                 f"👋 Du bist bereits angemeldet.\n"
                 f"Du hast {filter_count} Filter aktiviert.\n\n"
                 "🔹 /filters zeigt deine aktuellen Filter an\n"
-                "🔹 /add-filter um Filter hinzuzufügen\n"
-                "🔹 /remove-filter um Filter zu entfernen\n"
-                "🔹 /purge-filters um alle Filter zu löschen\n"
-                "🔹 /list-courses zeigt alle bekannten Lehrgangsnamen\n"
+                "🔹 /addfilter um Filter hinzuzufügen\n"
+                "🔹 /removefilter um Filter zu entfernen\n"
+                "🔹 /purgefilters um alle Filter zu löschen\n"
+                "🔹 /listcourses zeigt alle bekannten Lehrgangsnamen\n"
                 "🔹 /stop um dich abzumelden",
                 parse_mode="HTML",
             )

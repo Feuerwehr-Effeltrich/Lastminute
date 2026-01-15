@@ -34,6 +34,15 @@ Ein Telegram-Bot, der die [Feuerwehr-Restplatzbörse Bayern](https://www.bms-fw.
 
 Der Bot läuft nun und überwacht die Webseite.
 
+## Datenbank-Inspektion
+
+Um die Datenbank manuell einzusehen (z.B. Benutzer oder gefundene Kurse), kann folgender Befehl genutzt werden:
+
+```bash
+docker exec -it lastminute_db mariadb -u user -p lastminute
+```
+(Das Passwort ist standardmäßig `password`, sofern in der `.env` nicht anders definiert.)
+
 ## Entwicklung & Tests
 
 Das Projekt nutzt `uv` für das Dependency Management.
