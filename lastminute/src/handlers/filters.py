@@ -47,9 +47,10 @@ async def cmd_filters(message: types.Message):
 async def cmd_add_filter(message: types.Message, state: FSMContext):
     await state.set_state(FilterStates.waiting_for_add_filter)
     await message.answer(
-        "Gebe einen oder mehrere Suchtitel ein, nach denen gefiltert werden soll.\n"
-        "Für mehrere Titel, trenne diese mit einem Strichpunkt <b>;</b>\n\n"
-        "Groß- und Kleinschreibung ist egal, ebenso werden Leerzeichen bei Filtern ignoriert.\n"
+        "🔍 <b>Filter hinzufügen</b>\n\n"
+        "Gib einen oder mehrere Suchtitel ein, nach denen gefiltert werden soll.\n"
+        "Für mehrere Titel trenne diese mit einem Strichpunkt <b>;</b>\n\n"
+        "💡 <i>Groß- und Kleinschreibung sowie Leerzeichen werden beim Vergleich ignoriert.</i>\n\n"
         "Um die Eingabe abzubrechen, schreibe <b>x</b>",
         parse_mode="HTML",
     )

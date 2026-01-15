@@ -11,6 +11,36 @@ from src.states import FilterStates
 router = Router()
 
 
+async def send_welcome_overview(message: types.Message, user: User = None):
+    if not user:
+        await message.answer(
+            "👋 <b>Hi, ich bin der LastminuteBayernBot!</b>\n\n"
+            "Du bist jetzt eingetragen und erhältst Nachrichten zu jedem neuen freien Platz.\n"
+            "Die Abfrage nach neuen Plätzen findet alle 10 Minuten statt.\n\n"
+            "Sollte nur ein Teil für dich relevant sein, kannst du Filter hinzufügen:\n"
+            "🔹 /filters zeigt deine aktuellen Filter an\n"
+            "🔹 /addfilter um Filter hinzuzufügen\n"
+            "🔹 /removefilter um Filter zu entfernen\n"
+            "🔹 /purgefilters um alle Filter zu löschen\n"
+            "🔹 /listcourses zeigt alle bekannten Lehrgangsnamen\n"
+            "🔹 /stop um dich abzumelden",
+            parse_mode="HTML",
+        )
+    else:
+        filter_count = len(user.filters) if user.filters else 0
+        await message.answer(
+            f"👋 Du bist angemeldet.\n"
+            f"Du hast {filter_count} Filter aktiviert.\n\n"
+            "🔹 /filters zeigt deine aktuellen Filter an\n"
+            "🔹 /addfilter um Filter hinzuzufügen\n"
+            "🔹 /removefilter um Filter zu entfernen\n"
+            "🔹 /purgefilters um alle Filter zu löschen\n"
+            "🔹 /listcourses zeigt alle bekannten Lehrgangsnamen\n"
+            "🔹 /stop um dich abzumelden",
+            parse_mode="HTML",
+        )
+
+
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
     user_id = message.from_user.id
@@ -25,33 +55,9 @@ async def cmd_start(message: types.Message):
             new_user = User(user_id=user_id, filters=[])
             session.add(new_user)
             await session.commit()
-
-            await message.answer(
-                "👋 <b>Hi, ich bin der LastminuteBayernBot!</b>\n\n"
-                "Du bist jetzt eingetragen und erhältst Nachrichten zu jedem neuen freien Platz.\n"
-                "Die Abfrage nach neuen Plätzen findet alle 10 Minuten statt.\n\n"
-                "Sollte nur ein Teil für dich relevant sein, kannst du Filter hinzufügen:\n"
-                "🔹 /filters zeigt deine aktuellen Filter an\n"
-                "🔹 /addfilter um Filter hinzuzufügen\n"
-                "🔹 /removefilter um Filter zu entfernen\n"
-                "🔹 /purgefilters um alle Filter zu löschen\n"
-                "🔹 /listcourses zeigt alle bekannten Lehrgangsnamen\n"
-                "🔹 /stop um dich abzumelden",
-                parse_mode="HTML",
-            )
+            await send_welcome_overview(message, None)
         else:
-            filter_count = len(user.filters) if user.filters else 0
-            await message.answer(
-                f"👋 Du bist angemeldet.\n"
-                f"Du hast {filter_count} Filter aktiviert.\n\n"
-                "🔹 /filters zeigt deine aktuellen Filter an\n"
-                "🔹 /addfilter um Filter hinzuzufügen\n"
-                "🔹 /removefilter um Filter zu entfernen\n"
-                "🔹 /purgefilters um alle Filter zu löschen\n"
-                "🔹 /listcourses zeigt alle bekannten Lehrgangsnamen\n"
-                "🔹 /stop um dich abzumelden",
-                parse_mode="HTML",
-            )
+            await send_welcome_overview(message, user)
 
 
 @router.message(Command("stop"))
@@ -87,3 +93,20 @@ async def process_stop_confirmation(message: types.Message, state: FSMContext):
         )
 
     await state.clear()
+
+
+@router.message()
+async def cmd_unknown(message: types.Message):
+    user_id = message.from_user.id
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(User).where(User.user_id == user_id))
+        user = result.scalars().first()
+
+        if not user:
+            await message.answer(
+                "👋 <b>Hi, ich bin der LastminuteBayernBot!</b>\n\n"
+                "Wenn du Benachrichtigungen für freie Plätze auf der Feuerwehr-Restplatzbörse erhalten möchtest: /start",
+                parse_mode="HTML",
+            )
+        else:
+            await send_welcome_overview(message, user)
