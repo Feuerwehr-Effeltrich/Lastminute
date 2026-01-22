@@ -12,13 +12,78 @@ def read_local_html():
         return f.read()
 
 
-@patch("requests.get")
-def test_parsing_real_dump(mock_get):
+@patch("requests.Session")
+def test_parsing_with_pagination(mock_session_cls):
     # Setup mock
+    mock_session = Mock()
+    mock_session_cls.return_value = mock_session
+
+    # First response has the dropdown and only some items
+    html_with_dropdown = """
+    <html><body>
+    <table class="list">
+        <tr class="odd"><td></td><td><span class="contextMenu" data-id="1"></span></td><td>Event 1</td><td>26.01.2026 10:15 Uhr</td><td>26.01.2026 12:15 Uhr</td><td>Loc</td><td>5</td></tr>
+        <tr class="pagingRow">
+            <td>
+                <select name="ctl00$ctl00$CM$CM$CtrlCourses$CtrlCoursesList$CtrlGrid$ctl13$ctl06">
+                    <option value="10">10</option>
+                    <option value="100">100</option>
+                </select>
+            </td>
+        </tr>
+    </table>
+    </body></html>
+    """
+
+    # Second response has more items
+    html_full = """
+    <html><body>
+    <table class="list">
+        <tr class="odd"><td></td><td><span class="contextMenu" data-id="1"></span></td><td>Event 1</td><td>26.01.2026 10:15 Uhr</td><td>26.01.2026 12:15 Uhr</td><td>Loc</td><td>5</td></tr>
+        <tr class="even"><td></td><td><span class="contextMenu" data-id="2"></span></td><td>Event 2</td><td>26.01.2026 10:15 Uhr</td><td>26.01.2026 12:15 Uhr</td><td>Loc</td><td>5</td></tr>
+    </table>
+    </body></html>
+    """
+
+    mock_resp1 = Mock()
+    mock_resp1.text = html_with_dropdown
+    mock_resp1.raise_for_status.return_value = None
+
+    mock_resp2 = Mock()
+    mock_resp2.text = html_full
+    mock_resp2.raise_for_status.return_value = None
+
+    mock_session.get.return_value = mock_resp1
+    mock_session.post.return_value = mock_resp2
+
+    events = fetch_events()
+
+    assert len(events) == 2
+    assert events[0].id == 1
+    assert events[1].id == 2
+    assert mock_session.post.called
+    # Check that it called post with the right data
+    args, kwargs = mock_session.post.call_args
+    assert (
+        kwargs["data"][
+            "ctl00$ctl00$CM$CM$CtrlCourses$CtrlCoursesList$CtrlGrid$ctl13$ctl06"
+        ]
+        == "100"
+    )
+
+
+@patch("requests.Session")
+def test_parsing_real_dump(mock_session_cls):
+    # Setup mock
+    mock_session = Mock()
+    mock_session_cls.return_value = mock_session
+
     mock_response = Mock()
     mock_response.text = read_local_html()
     mock_response.raise_for_status.return_value = None
-    mock_get.return_value = mock_response
+
+    mock_session.get.return_value = mock_response
+    mock_session.post.return_value = mock_response
 
     # Run scraper
     events = fetch_events()

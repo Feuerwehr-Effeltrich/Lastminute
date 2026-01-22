@@ -1,7 +1,8 @@
 import requests
+import re
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Dict
 import logging
 from src.models import Event
 
@@ -20,20 +21,65 @@ def parse_date(date_str: str) -> Optional[datetime]:
         return None
 
 
+def _get_hidden_fields(soup: BeautifulSoup) -> Dict[str, str]:
+    """Extract ASP.NET hidden fields from the soup."""
+    fields = {}
+    for input_tag in soup.find_all("input", type="hidden"):
+        name = input_tag.get("name")
+        if name:
+            fields[name] = input_tag.get("value", "")
+    return fields
+
+
 def fetch_events() -> List[Event]:
     """
     Fetches and parses the last minute events.
+    Sets the page size to 100 if a paging dropdown is found.
     Returns a list of Event objects.
     Raises Exception if parsing fails (structure change).
     """
+    session = requests.Session()
+    # Add a common User-Agent to avoid being blocked
+    session.headers.update(
+        {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+    )
+
     try:
-        resp = requests.get(URL, timeout=30)
+        resp = session.get(URL, timeout=30)
         resp.raise_for_status()
     except requests.RequestException as e:
-        logger.error(f"Network error fetching events: {e}")
+        logger.error(f"Network error fetching initial page: {e}")
         return []
 
     soup = BeautifulSoup(resp.text, "html.parser")
+
+    # Try to find the page size dropdown and set it to 100
+    # We look for the pagingRow and then the select element inside it
+    paging_row = soup.find("tr", class_="pagingRow")
+    target_select = paging_row.find("select") if paging_row else None
+
+    if target_select:
+        target_name = str(target_select.get("name"))
+
+        hidden_fields = _get_hidden_fields(soup)
+        payload = {
+            "__EVENTTARGET": target_name,
+            "__EVENTARGUMENT": "",
+            "__LASTFOCUS": "",
+            **hidden_fields,
+            target_name: "100",
+        }
+        try:
+            logger.info("Requesting 100 entries per page...")
+            resp = session.post(URL, data=payload, timeout=30)
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, "html.parser")
+        except requests.RequestException as e:
+            logger.error(f"Network error setting page size: {e}")
+            # Continue with initial soup if post fails
+
     table = soup.find("table", class_="list")
 
     if not table:
@@ -56,7 +102,7 @@ def fetch_events() -> List[Event]:
                 logger.warning("Could not find data-id in row")
                 continue
 
-            event_id = int(id_span["data-id"])
+            event_id = int(str(id_span["data-id"]))
 
             title = cols[2].get_text(strip=True)
             begin_str = cols[3].get_text(strip=True)
