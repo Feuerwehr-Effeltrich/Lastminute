@@ -1,16 +1,4 @@
-from aiogram import Router, types
-from aiogram.filters import Command, StateFilter
-from aiogram.fsm.context import FSMContext
-from sqlalchemy import select, delete
-from sqlalchemy.exc import IntegrityError
-
-from src.database import AsyncSessionLocal
-from src.models import User
-from src.states import FilterStates
-
-router = Router()
-
-
+from typing import Optional
 from aiogram import Router, types, F
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
@@ -24,12 +12,14 @@ from src.states import FilterStates
 router = Router()
 
 
-async def send_welcome_overview(message: types.Message, user: User = None):
+async def send_welcome_overview(message: types.Message, user: Optional[User] = None):
+    link = "🌐 <a href='https://www.bms-fw.bayern.de/Navigation/Public/lastminute.aspx'>Restplatzbörse öffnen</a>"
     if not user:
         await message.answer(
             "👋 <b>Hi, ich bin der LastminuteBayernBot!</b>\n\n"
             "Du bist jetzt eingetragen und erhältst Nachrichten zu jedem neuen freien Platz.\n"
             "Die Abfrage nach neuen Plätzen findet alle 10 Minuten statt.\n\n"
+            f"{link}\n\n"
             "Sollte nur ein Teil für dich relevant sein, kannst du Filter hinzufügen:\n"
             "🔹 /filters zeigt deine aktuellen Filter an\n"
             "🔹 /addfilter um Filter hinzuzufügen\n"
@@ -38,6 +28,7 @@ async def send_welcome_overview(message: types.Message, user: User = None):
             "🔹 /listcourses zeigt alle bekannten Lehrgangsnamen\n"
             "🔹 /stop um dich abzumelden",
             parse_mode="HTML",
+            disable_web_page_preview=True,
         )
     else:
         # Check if user.filters is a list (SQLAlchemy JSON might return it as such)
@@ -46,6 +37,7 @@ async def send_welcome_overview(message: types.Message, user: User = None):
         await message.answer(
             f"👋 Du bist angemeldet.\n"
             f"Du hast {filter_count} Filter aktiviert.\n\n"
+            f"{link}\n\n"
             "🔹 /filters zeigt deine aktuellen Filter an\n"
             "🔹 /addfilter um Filter hinzuzufügen\n"
             "🔹 /removefilter um Filter zu entfernen\n"
@@ -53,12 +45,15 @@ async def send_welcome_overview(message: types.Message, user: User = None):
             "🔹 /listcourses zeigt alle bekannten Lehrgangsnamen\n"
             "🔹 /stop um dich abzumelden",
             parse_mode="HTML",
+            disable_web_page_preview=True,
         )
 
 
 @router.message(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.clear()
+    if not message.from_user:
+        return
     user_id = message.from_user.id
 
     async with AsyncSessionLocal() as session:
