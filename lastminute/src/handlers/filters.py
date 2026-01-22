@@ -172,7 +172,9 @@ async def cmd_list_courses(message: types.Message):
         titles = result.scalars().all()
 
     if not titles:
-        await message.answer("ℹ️ Noch keine Lehrgänge bekannt.")
+        await message.answer(
+            "ℹ️ Noch keine Lehrgänge bekannt.\n\nZurück zur Übersicht: /start"
+        )
         return
 
     # Telegram message limit is 4096 chars.
@@ -187,4 +189,5 @@ async def cmd_list_courses(message: types.Message):
         msg_buffer += line
 
     if msg_buffer:
+        msg_buffer += "\nZurück zur Übersicht: /start"
         await message.answer(msg_buffer, parse_mode="HTML")
